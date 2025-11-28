@@ -365,4 +365,140 @@ contract AVAXVaultTest is Test {
         
         assertEq(wavax.balanceOf(user), 950 ether); // 1000 - 100 + 50
     }
+    
+    // =========================================================
+    // 6. STAKING LOGIC & YIELD ACCRUAL
+    // =========================================================
+
+    function test_Staking_InitialExchangeRate() public {
+        // Initial state: 1 Asset should equal 1 Share
+        vault.addStrategy(strategy1);
+        vault.updateActiveStrategy(strategy1);
+
+        vm.startPrank(user);
+        wavax.approve(address(vault), 100 ether);
+        
+        // Deposit 100 Assets -> Expect 100 Shares
+        uint256 shares = vault.deposit(100 ether, user);
+        vm.stopPrank();
+
+        assertEq(shares, 100 ether, "Initial deposit should be 1:1");
+        assertEq(vault.balanceOf(user), 100 ether);
+        assertEq(vault.convertToAssets(1 ether), 1 ether, "Exchange rate should be 1:1");
+    }
+
+    function test_Staking_YieldIncreasesSharePrice() public {
+        vault.addStrategy(strategy1);
+        vault.updateActiveStrategy(strategy1);
+
+        // 1. User A Deposits 100
+        vm.startPrank(user);
+        wavax.approve(address(vault), 100 ether);
+        vault.deposit(100 ether, user);
+        vm.stopPrank();
+
+        // 2. Simulate Yield: Airdrop 10 WAVAX directly to the Strategy
+        // This mimics the strategy earning profit (DeFi yields)
+        // Total Assets: 110, Total Supply: 100
+        wavax.mint(address(strategy1), 10 ether);
+
+        // 3. Verify Exchange Rate changed
+        // 1 Share should now be worth 1.1 Assets
+        uint256 oneShareValue = vault.convertToAssets(1 ether);
+        assertEq(oneShareValue, 1.1 ether, "Share price did not appreciate");
+
+        // 4. User Withdraws (Redeems)
+        // User burns 100 shares -> Should receive 110 assets
+        uint256 startBal = wavax.balanceOf(user); // 900
+        
+        vm.prank(user);
+        vault.redeem(100 ether, user, user);
+
+        uint256 endBal = wavax.balanceOf(user);
+        assertEq(endBal - startBal, 110 ether, "Yield not realized on withdrawal");
+    }
+
+    function test_Staking_Mint_CalculatesCostCorrectly() public {
+        // Test the difference between Deposit (Input: Assets) and Mint (Input: Shares)
+        // especially when the exchange rate is NOT 1:1
+        
+        vault.addStrategy(strategy1);
+        vault.updateActiveStrategy(strategy1);
+
+        // 1. Setup Initial State (User A)
+        vm.startPrank(user);
+        wavax.approve(address(vault), 100 ether);
+        vault.deposit(100 ether, user);
+        vm.stopPrank();
+
+        // 2. Add Yield (10% profit)
+        wavax.mint(address(strategy1), 10 ether); 
+        // Total Assets: 110, Supply: 100. Price: 1.1
+
+        // 3. User B wants exactly 10 SHARES via mint()
+        // If price is 1.1, 10 shares should cost 11 assets
+        address userB = address(0x2);
+        wavax.mint(userB, 100 ether);
+        
+        vm.startPrank(userB);
+        wavax.approve(address(vault), 100 ether);
+        
+        // Call MINT (specifying shares output)
+        uint256 assetsTaken = vault.mint(10 ether, userB);
+        vm.stopPrank();
+
+        // 4. Verification
+        // Solmate's ERC4626 implementation of previewMint often rounds UP to protect the vault
+        assertEq(assetsTaken, 11 ether, "Mint did not charge the correct appreciated price");
+        assertEq(vault.balanceOf(userB), 10 ether, "Did not mint exact requested shares");
+    }
+
+    function test_Staking_TransferAndRedeem() public {
+        // Test that shares are fully fungible and transferrable
+        vault.addStrategy(strategy1);
+        vault.updateActiveStrategy(strategy1);
+
+        // 1. User A deposits
+        vm.startPrank(user);
+        wavax.approve(address(vault), 100 ether);
+        vault.deposit(100 ether, user);
+        
+        // 2. User A transfers lsAVAX to User B (Attacker address used as placeholder)
+        vault.transfer(attacker, 50 ether);
+        vm.stopPrank();
+
+        assertEq(vault.balanceOf(user), 50 ether);
+        assertEq(vault.balanceOf(attacker), 50 ether);
+
+        // 3. User B (Attacker) redeems their shares
+        uint256 attackerStartAsset = wavax.balanceOf(attacker);
+        
+        vm.prank(attacker);
+        vault.redeem(50 ether, attacker, attacker);
+
+        assertEq(vault.balanceOf(attacker), 0);
+        assertEq(wavax.balanceOf(attacker) - attackerStartAsset, 50 ether);
+    }
+
+    function test_Staking_PreviewFunctionsAccuracy() public {
+        vault.addStrategy(strategy1);
+        vault.updateActiveStrategy(strategy1);
+
+        // Deposit to create supply
+        vm.startPrank(user);
+        wavax.approve(address(vault), 100 ether);
+        vault.deposit(100 ether, user);
+        vm.stopPrank();
+
+        // Add Yield
+        wavax.mint(address(strategy1), 10 ether);
+
+        // Verify Previews match Executions
+        // Preview Redeem 100 shares -> Expect 110 assets
+        assertEq(vault.previewRedeem(100 ether), 110 ether);
+        
+        // Preview Deposit 11 assets -> Expect 10 shares (roughly, keeping in mind rounding)
+        // 11 Assets / 1.1 Rate = 10 Shares
+        assertEq(vault.previewDeposit(11 ether), 10 ether);
+    }
 }
