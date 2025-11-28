@@ -5,45 +5,46 @@ import {Test, console} from "forge-std/Test.sol";
 import {AVAVault} from "../src/AVAVault.sol";
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {IStrategy} from "../src/interfaces/IStrategy.sol";
-
+import {AAVEStrategy as MockStrategy} from "../src/Stratagies/AAVEStrategy.sol";
+import {MockWAVAX} from "../src/Mocks/MockWAVAX.sol";
 // ---------------------------------------------------------
 // MOCKS
 // ---------------------------------------------------------
 
-contract MockWAVAX is ERC20 {
-    constructor() ERC20("Wrapped AVAX", "WAVAX", 18) {}
-    function mint(address to, uint256 amount) external {
-        _mint(to, amount);
-    }
-}
+// contract MockWAVAX is ERC20 {
+//     constructor() ERC20("Wrapped AVAX", "WAVAX", 18) {}
+//     function mint(address to, uint256 amount) external {
+//         _mint(to, amount);
+//     }
+// }
 
-contract MockStrategy is IStrategy {
-    ERC20 public immutable assetToken;
-    address public immutable vault;
+// contract MockStrategy is IStrategy {
+//     ERC20 public immutable assetToken;
+//     address public immutable vault;
 
-    constructor(address _asset, address _vault) {
-        assetToken = ERC20(_asset);
-        vault = _vault;
-    }
+//     constructor(address _asset, address _vault) {
+//         assetToken = ERC20(_asset);
+//         vault = _vault;
+//     }
 
-    function asset() external view returns (address) {
-        return address(assetToken);
-    }
+//     function asset() external view returns (address) {
+//         return address(assetToken);
+//     }
 
-    function deposit(uint256 amount) external {
-        require(msg.sender == vault, "Only vault");
-        assetToken.transferFrom(msg.sender, address(this), amount);
-    }
+//     function deposit(uint256 amount) external {
+//         require(msg.sender == vault, "Only vault");
+//         assetToken.transferFrom(msg.sender, address(this), amount);
+//     }
 
-    function withdraw(uint256 amount) external {
-        require(msg.sender == vault, "Only vault");
-        assetToken.transfer(vault, amount);
-    }
+//     function withdraw(uint256 amount) external {
+//         require(msg.sender == vault, "Only vault");
+//         assetToken.transfer(vault, amount);
+//     }
 
-    function balance() external view returns (uint256) {
-        return assetToken.balanceOf(address(this));
-    }
-}
+//     function balance() external view returns (uint256) {
+//         return assetToken.balanceOf(address(this));
+//     }
+// }
 
 // ---------------------------------------------------------
 // TEST SUITE
