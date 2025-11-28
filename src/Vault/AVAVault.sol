@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol"; // The abstract file you provided
-import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "../lib/solmate/src/utils/SafeTransferLib.sol";
+import {ERC4626} from "../../lib/solmate/src/tokens/ERC4626.sol"; // The abstract file you provided
+import {ERC20} from "../../lib/solmate/src/tokens/ERC20.sol";
+import {SafeTransferLib} from "../../lib/solmate/src/utils/SafeTransferLib.sol";
 import {IStrategy} from "./interfaces/IStrategy.sol";
 
 /*//////////////////////////////////////////////////////////////
