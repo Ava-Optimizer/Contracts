@@ -4,21 +4,7 @@ pragma solidity 0.8.30;
 import {ERC4626} from "../lib/solmate/src/tokens/ERC4626.sol"; // The abstract file you provided
 import {ERC20} from "../lib/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "../lib/solmate/src/utils/SafeTransferLib.sol";
-
-// Interface for strategies interacting with WAVAX
-interface IStrategy {
-    // Must transfer 'amount' of WAVAX from the Vault to the Strategy
-    function deposit(uint256 amount) external;
-
-    // Must transfer 'amount' of WAVAX back to the Vault
-    function withdraw(uint256 amount) external;
-
-    // Returns the total value managed by the strategy in WAVAX terms
-    function balance() external view returns (uint256);
-
-    // Returns the underlying asset (WAVAX) address this strategy accepts
-    function asset() external view returns (address);
-}
+import {IStrategy} from "./interfaces/IStrategy.sol";
 
 /*//////////////////////////////////////////////////////////////
 //
@@ -31,7 +17,7 @@ interface IStrategy {
  * @notice An ERC4626 vault for WAVAX.
  * @dev Inherits from the standard ERC4626 abstract contract provided.
  */
-contract AVAXVault is ERC4626 {
+contract AVAVault is ERC4626 {
     using SafeTransferLib for ERC20;
 
     // --- State Variables ---

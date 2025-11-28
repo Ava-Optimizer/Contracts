@@ -1,57 +1,34 @@
-//SPDX-License-Identifier: MIT
-
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
 import {IStrategy} from "../interfaces/IStrategy.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract AAVEStrategy is IStrategy {
-    
-    /// @notice The vault contract that controls this strategy.
+    ERC20 public immutable assetToken;
     address public immutable vault;
 
-    /**
-     * @dev Sets the vault address on deployment.
-     * The vault admin would deploy this, passing the vault's address.
-     */
-    constructor(address _vault) {
-        require(_vault != address(0), "ZERO_ADDRESS");
+    constructor(address _asset, address _vault) {
+        assetToken = ERC20(_asset);
         vault = _vault;
     }
 
-    /**
-     * @notice Accept ETH deposits *only* from the vault.
-     */
-    function deposit() external payable override {
-        require(msg.sender == vault, "NOT_VAULT");
+    function asset() external view returns (address) {
+        return address(assetToken);
     }
 
-    /**
-     * @notice Withdraw ETH *only* to the vault.
-     */
-    function withdraw(uint256 amount) external override {
-        require(msg.sender == vault, "NOT_VAULT");
-        require(address(this).balance >= amount, "INSUFFICIENT_FUNDS");
-        
-        // Send ETH back to the vault
-        (bool success, ) = vault.call{value: amount}("");
-        require(success, "ETH_TRANSFER_FAILED");
+
+    function deposit(uint256 amount) external {
+        require(msg.sender == vault, "Only vault");
+        assetToken.transferFrom(msg.sender, address(this), amount);
     }
 
-    /**
-     * @notice Report the total ETH balance held by this contract.
-     * @dev A real strategy would query its underlying protocol.
-     */
-    function balance() external view override returns (uint256) {
-        return address(this).balance;
+    function withdraw(uint256 amount) external {
+        require(msg.sender == vault, "Only vault");
+        assetToken.transfer(vault, amount);
     }
 
-    /**
-     * @notice Allow receiving ETH via .deposit{value: ...}
-     * We also need a receive() function to accept the ETH.
-     */
-    receive() external payable {
-        // This payable receive is necessary for the vault's
-        // `strategy.deposit{value: assets}()` call.
-        require(msg.sender == vault, "NOT_VAULT");
+    function balance() external view returns (uint256) {
+        return assetToken.balanceOf(address(this));
     }
 }
